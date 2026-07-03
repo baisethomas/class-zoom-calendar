@@ -4,6 +4,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 
 import type {
   AccessCodeFormState,
+  FeedTokenFormState,
   SchoolSettingsFormState,
   SchoolSettingsFormValues,
 } from "@/features/settings/admin-actions";
@@ -17,6 +18,8 @@ type AccessCodeAction = (
   previousState: AccessCodeFormState | undefined,
   formData: FormData,
 ) => Promise<AccessCodeFormState>;
+
+type FeedTokenAction = () => Promise<FeedTokenFormState>;
 
 function settingsErrorId(name: keyof SchoolSettingsFormValues) {
   return `settings-${name}-error`;
@@ -223,5 +226,65 @@ export function AccessCodeForm({
         {pending ? "Saving…" : "Set access code"}
       </button>
     </form>
+  );
+}
+
+export function CalendarFeedForm({
+  action,
+  feedUrl,
+}: {
+  action: FeedTokenAction;
+  feedUrl: string | null;
+}) {
+  const [state, formAction, pending] = useActionState(action, undefined);
+
+  return (
+    <div className="class-form">
+      <p id="calendar-feed-status" className="intro">
+        {feedUrl
+          ? "Parents can subscribe to this link in Google Calendar, Apple Calendar, or Outlook to keep the class schedule synced automatically."
+          : "No calendar feed link exists yet. Generate one to let parents subscribe to the class schedule from their own calendar apps."}
+      </p>
+      {state && !state.ok ? (
+        <p className="field-error" role="alert">{state.error}</p>
+      ) : state?.ok ? (
+        <p className="form-status" role="status" aria-live="polite">Calendar feed link updated.</p>
+      ) : null}
+
+      {feedUrl ? (
+        <div className="field">
+          <label htmlFor="calendar-feed-url">Calendar subscription link</label>
+          <input
+            id="calendar-feed-url"
+            type="url"
+            readOnly
+            value={feedUrl}
+            onFocus={(event) => event.currentTarget.select()}
+            aria-describedby="calendar-feed-status"
+          />
+          <p className="field-help">
+            Anyone with this link can read the class schedule. Regenerate it to revoke old links.
+          </p>
+        </div>
+      ) : null}
+
+      <form
+        action={formAction}
+        onSubmit={(event) => {
+          if (
+            feedUrl &&
+            !window.confirm(
+              "Regenerate the calendar feed link? Parents using the old link will stop receiving updates.",
+            )
+          ) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <button className="primary-action" type="submit" disabled={pending}>
+          {pending ? "Saving…" : feedUrl ? "Regenerate feed link" : "Generate feed link"}
+        </button>
+      </form>
+    </div>
   );
 }

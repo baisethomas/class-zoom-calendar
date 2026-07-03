@@ -9,7 +9,15 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 export type AdminClass = Pick<
   Tables<"classes">,
-  "id" | "title" | "description" | "teacher_name" | "starts_at" | "ends_at" | "zoom_url" | "status"
+  | "id"
+  | "title"
+  | "description"
+  | "teacher_name"
+  | "starts_at"
+  | "ends_at"
+  | "zoom_url"
+  | "status"
+  | "series_id"
 >;
 
 type Action = (formData: FormData) => void | Promise<unknown>;
@@ -42,11 +50,13 @@ function ClassRow({
   classItem,
   timeZone,
   setStatusAction,
+  duplicateAction,
   onDelete,
 }: {
   classItem: AdminClass;
   timeZone: string;
   setStatusAction: Action;
+  duplicateAction: Action;
   onDelete: (classItem: AdminClass, opener: HTMLButtonElement) => void;
 }) {
   const canceled = classItem.status === "canceled";
@@ -57,10 +67,15 @@ function ClassRow({
       actionResult(await setStatusAction(formData)),
     undefined,
   );
+  const [duplicateState, duplicateFormAction, duplicatePending] = useActionState(
+    async (_previousState: ActionResult | undefined, formData: FormData) =>
+      actionResult(await duplicateAction(formData)),
+    undefined,
+  );
 
   return (
     <li className="admin-class-row">
-      <div>
+      <div className="admin-class-summary">
         <h3>{classItem.title}</h3>
         <p className="class-time">
           <time dateTime={classItem.starts_at}>
@@ -68,8 +83,12 @@ function ClassRow({
           </time>
         </p>
         <p className="teacher">Teacher: {classItem.teacher_name}</p>
+        {classItem.description ? <p className="admin-class-description">{classItem.description}</p> : null}
       </div>
-      <span className={`status-pill status-pill--${classItem.status}`}>{statusLabel(classItem.status)}</span>
+      <div className="admin-class-pills">
+        <span className={`status-pill status-pill--${classItem.status}`}>{statusLabel(classItem.status)}</span>
+        {classItem.series_id ? <span className="status-pill status-pill--series">Weekly series</span> : null}
+      </div>
       <div className="admin-class-actions">
         <Link className="secondary-action" href={`/admin/classes/${classItem.id}/edit`} aria-label={`Edit ${classItem.title}`}>
           Edit
@@ -91,6 +110,24 @@ function ClassRow({
             {statusPending ? "Saving…" : actionLabel}
           </button>
         </form>
+        <form
+          action={duplicateFormAction as NativeFormAction}
+          onSubmit={(event) => {
+            if (!window.confirm(`Duplicate ${classItem.title} to next week?`)) {
+              event.preventDefault();
+            }
+          }}
+        >
+          <input type="hidden" name="id" value={classItem.id} />
+          <button
+            className="secondary-action"
+            type="submit"
+            disabled={duplicatePending}
+            aria-label={`Duplicate ${classItem.title} to next week`}
+          >
+            {duplicatePending ? "Saving…" : "Duplicate"}
+          </button>
+        </form>
         <button
           className="danger-action"
           type="button"
@@ -103,6 +140,11 @@ function ClassRow({
       {statusState && !statusState.ok ? (
         <p className="field-error" role="alert">
           {statusState.error}
+        </p>
+      ) : null}
+      {duplicateState && !duplicateState.ok ? (
+        <p className="field-error" role="alert">
+          {duplicateState.error}
         </p>
       ) : null}
     </li>
@@ -175,6 +217,9 @@ function DeleteDialog({
         <h2 id="delete-class-title">Delete {classItem.title}</h2>
         <p>
           This permanently deletes <strong>{classItem.title}</strong> from the calendar.
+          {classItem.series_id
+            ? " This class is part of a weekly series."
+            : null}
         </p>
         {deleteState && !deleteState.ok ? (
           <p className="field-error" role="alert">
@@ -188,6 +233,19 @@ function DeleteDialog({
           }}
         >
           <input type="hidden" name="id" value={classItem.id} />
+          {classItem.series_id ? (
+            <fieldset className="field series-scope">
+              <legend>Delete scope</legend>
+              <label className="series-scope__option">
+                <input type="radio" name="scope" value="one" defaultChecked />
+                This class only
+              </label>
+              <label className="series-scope__option">
+                <input type="radio" name="scope" value="future" />
+                This and future classes in the series
+              </label>
+            </fieldset>
+          ) : null}
           <div className="field">
             <label htmlFor="delete-confirm-title">Type {classItem.title} to confirm</label>
             <input
@@ -218,18 +276,25 @@ function ClassSection({
   classes,
   timeZone,
   setStatusAction,
+  duplicateAction,
   onDelete,
 }: {
   title: string;
   classes: AdminClass[];
   timeZone: string;
   setStatusAction: Action;
+  duplicateAction: Action;
   onDelete: (classItem: AdminClass, opener: HTMLButtonElement) => void;
 }) {
   const id = title.toLowerCase().replaceAll(" ", "-");
   return (
     <section className="admin-class-section" role="region" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
+      <div className="admin-class-section__header">
+        <h2 id={id}>{title}</h2>
+        <p className="admin-class-section__count" aria-hidden="true">
+          {classes.length}
+        </p>
+      </div>
       {classes.length === 0 ? (
         <p className="empty-state">No classes in this section.</p>
       ) : (
@@ -240,6 +305,7 @@ function ClassSection({
               classItem={classItem}
               timeZone={timeZone}
               setStatusAction={setStatusAction}
+              duplicateAction={duplicateAction}
               onDelete={onDelete}
             />
           ))}
@@ -254,26 +320,37 @@ export function AdminClassList({
   timeZone,
   now,
   setStatusAction,
+  duplicateAction,
   deleteAction,
 }: {
   classes: AdminClass[];
   timeZone: string;
   now?: string;
   setStatusAction: Action;
+  duplicateAction: Action;
   deleteAction: Action;
 }) {
   const [deleteTarget, setDeleteTarget] = useState<AdminClass | null>(null);
+  const [search, setSearch] = useState("");
   const deleteOpenerRef = useRef<HTMLButtonElement | null>(null);
   const nowMs = Date.parse(now ?? new Date().toISOString());
   const { upcoming, past } = useMemo(() => {
-    const upcomingClasses = classes
+    const query = search.trim().toLowerCase();
+    const visible = query
+      ? classes.filter(
+          (classItem) =>
+            classItem.title.toLowerCase().includes(query) ||
+            classItem.teacher_name.toLowerCase().includes(query),
+        )
+      : classes;
+    const upcomingClasses = visible
       .filter((classItem) => Date.parse(classItem.starts_at) >= nowMs)
       .sort(byStartAscending);
-    const pastClasses = classes
+    const pastClasses = visible
       .filter((classItem) => Date.parse(classItem.starts_at) < nowMs)
       .sort((left, right) => byStartAscending(right, left));
     return { upcoming: upcomingClasses, past: pastClasses };
-  }, [classes, nowMs]);
+  }, [classes, nowMs, search]);
   const openDeleteDialog = (classItem: AdminClass, opener: HTMLButtonElement) => {
     deleteOpenerRef.current = opener;
     setDeleteTarget(classItem);
@@ -285,12 +362,23 @@ export function AdminClassList({
 
   return (
     <>
+      <div className="field admin-class-search">
+        <label htmlFor="class-search">Search classes</label>
+        <input
+          id="class-search"
+          type="search"
+          placeholder="Filter by title or teacher"
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+        />
+      </div>
       <div className="admin-classes">
         <ClassSection
           title="Upcoming classes"
           classes={upcoming}
           timeZone={timeZone}
           setStatusAction={setStatusAction}
+          duplicateAction={duplicateAction}
           onDelete={openDeleteDialog}
         />
         <ClassSection
@@ -298,6 +386,7 @@ export function AdminClassList({
           classes={past}
           timeZone={timeZone}
           setStatusAction={setStatusAction}
+          duplicateAction={duplicateAction}
           onDelete={openDeleteDialog}
         />
       </div>

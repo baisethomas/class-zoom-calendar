@@ -55,11 +55,21 @@ export function MonthPicker({
   todayDate,
   view,
   classDateKeys,
+  classTitlesByDate,
+  showViewSwitcher = true,
+  showTodayLink = true,
+  forceMonthGrid = false,
+  compact = false,
 }: {
   selectedDate: string;
   todayDate: string;
   view: CalendarView;
   classDateKeys: ReadonlySet<string>;
+  classTitlesByDate?: ReadonlyMap<string, readonly string[]>;
+  showViewSwitcher?: boolean;
+  showTodayLink?: boolean;
+  forceMonthGrid?: boolean;
+  compact?: boolean;
 }) {
   const { year, month } = parseDateKey(selectedDate);
   const title = new Intl.DateTimeFormat("en-US", {
@@ -75,21 +85,23 @@ export function MonthPicker({
   );
 
   return (
-    <section className="month-picker" aria-labelledby="month-title">
-      <nav className="view-switcher" aria-label="Calendar views">
-        <Link
-          href={calendarHref(selectedDate, "agenda")}
-          aria-current={view === "agenda" ? "page" : undefined}
-        >
-          Agenda view
-        </Link>
-        <Link
-          href={calendarHref(selectedDate, "month")}
-          aria-current={view === "month" ? "page" : undefined}
-        >
-          Month view
-        </Link>
-      </nav>
+    <section className={`month-picker${compact ? " month-picker--compact" : ""}`} aria-labelledby="month-title">
+      {showViewSwitcher ? (
+        <nav className="view-switcher" aria-label="Calendar views">
+          <Link
+            href={calendarHref(selectedDate, "agenda")}
+            aria-current={view === "agenda" ? "page" : undefined}
+          >
+            Agenda view
+          </Link>
+          <Link
+            href={calendarHref(selectedDate, "month")}
+            aria-current={view === "month" ? "page" : undefined}
+          >
+            Month view
+          </Link>
+        </nav>
+      ) : null}
       <div className="month-navigation">
         <Link href={calendarHref(previous, "month")} aria-label="Previous month">
           ←
@@ -99,10 +111,12 @@ export function MonthPicker({
           →
         </Link>
       </div>
-      <Link className="today-link" href={calendarHref(todayDate, view)}>
-        Today
-      </Link>
-      {view === "month" ? (
+      {showTodayLink ? (
+        <Link className="today-link" href={calendarHref(todayDate, view)}>
+          Today
+        </Link>
+      ) : null}
+      {view === "month" || forceMonthGrid ? (
         <table className="month-grid">
           <caption>{title}</caption>
           <thead>
@@ -119,17 +133,33 @@ export function MonthPicker({
               <tr key={week[0]!.date}>
                 {week.map((item) => {
                   const hasClasses = classDateKeys.has(item.date);
+                  const titles = classTitlesByDate?.get(item.date) ?? [];
                   const label = `${longDate(item.date)}${hasClasses ? ", classes scheduled" : ""}`;
                   return (
                     <td className="month-cell" key={item.date}>
                       <Link
                         className={`date-link${item.inMonth ? "" : " date-link--outside"}${hasClasses ? " date-link--has-classes" : ""}`}
-                        href={calendarHref(item.date, "agenda")}
+                        href={calendarHref(item.date, view)}
                         aria-label={label}
                         aria-current={item.date === selectedDate ? "date" : undefined}
                       >
                         {Number(item.date.slice(-2))}
-                        {hasClasses ? <span className="has-classes-text">Class</span> : null}
+                        {titles.length > 0 ? (
+                          <span className="cell-titles">
+                            {titles.slice(0, 2).map((title, position) => (
+                              <span className="cell-title" key={`${title}-${position}`}>
+                                {title}
+                              </span>
+                            ))}
+                            {titles.length > 2 ? (
+                              <span className="cell-title cell-title--more">
+                                +{titles.length - 2} more
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : hasClasses ? (
+                          <span className="has-classes-text">Class</span>
+                        ) : null}
                       </Link>
                     </td>
                   );

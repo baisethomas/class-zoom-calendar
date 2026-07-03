@@ -48,6 +48,8 @@ describe("ClassForm", () => {
         startTime: String(formData.get("startTime") ?? ""),
         endTime: String(formData.get("endTime") ?? ""),
         zoomUrl: String(formData.get("zoomUrl") ?? ""),
+        repeat: String(formData.get("repeat") ?? "none"),
+        repeatUntil: String(formData.get("repeatUntil") ?? ""),
       } satisfies ClassFormValues,
     }));
 

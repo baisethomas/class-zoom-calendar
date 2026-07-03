@@ -284,7 +284,7 @@ describe("administrator class actions", () => {
 
     expect(result).toEqual({ ok: true });
     expect(mocks.requireAdmin).toHaveBeenCalledTimes(1);
-    expect(admin.calls).toContainEqual(["classes.select", "title"]);
+    expect(admin.calls).toContainEqual(["classes.select", "title,starts_at,series_id"]);
     expect(admin.calls).toContainEqual(["classes.delete"]);
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/calendar");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/classes");

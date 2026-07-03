@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AdminNavLinks } from "@/features/admin/admin-nav-links";
 import { logoutAdmin, requireAdmin } from "@/features/admin/auth";
 import { LogoutForm } from "@/features/admin/logout-form";
 
@@ -12,11 +13,8 @@ export default async function ProtectedAdminLayout({ children }: Readonly<{ chil
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <Link href="/admin">Admin</Link>
-        <nav aria-label="Administrator">
-          <Link href="/admin/classes">Classes</Link>
-          <Link href="/admin/settings">Settings</Link>
-        </nav>
+        <Link href="/admin">Class Calendar · Admin</Link>
+        <AdminNavLinks />
         <LogoutForm action={logoutAdmin} />
       </header>
       <main id="main-content" className="admin-main">{children}</main>

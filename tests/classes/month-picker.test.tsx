@@ -64,10 +64,10 @@ describe("MonthPicker", () => {
       .toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
     expect(within(calendar).getAllByRole("row")).toHaveLength(6);
     expect(within(calendar).getByRole("link", { name: "June 15, 2026, classes scheduled" }))
-      .toHaveAttribute("href", "/calendar?date=2026-06-15&view=agenda");
+      .toHaveAttribute("href", "/calendar?date=2026-06-15&view=month");
     expect(within(calendar).getByRole("link", { name: "June 16, 2026" })).toHaveAttribute(
       "href",
-      "/calendar?date=2026-06-16&view=agenda",
+      "/calendar?date=2026-06-16&view=month",
     );
 
     const user = userEvent.setup();

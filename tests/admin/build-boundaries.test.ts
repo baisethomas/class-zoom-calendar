@@ -9,9 +9,12 @@ const temporaryDirectories: string[] = [];
 
 function fixture({
   authActionCount = 2,
-  classActionCount = 4,
-  settingsActionCount = 2,
+  classActionCount = 6,
+  settingsActionCount = 5,
+  remindersActionCount = 1,
   staticAsset = "safe client code",
+  matcherInFunctionsManifest = false,
+  publicConfigMarker = "env",
 } = {}) {
   const root = mkdtempSync(join(tmpdir(), "admin-boundary-"));
   temporaryDirectories.push(root);
@@ -39,13 +42,40 @@ function fixture({
       exportedName: `$$RSC_SERVER_ACTION_${index + authActionCount + classActionCount}`,
     }]),
   );
-  const node = { ...authActions, ...classActions, ...settingsActions };
+  const remindersActions = Object.fromEntries(
+    Array.from({ length: remindersActionCount }, (_, index) => {
+      const id = index + authActionCount + classActionCount + settingsActionCount;
+      return [String(id), {
+        filename: "src/features/reminders/actions.ts",
+        exportedName: `$$RSC_SERVER_ACTION_${id}`,
+      }];
+    }),
+  );
+  const node = { ...authActions, ...classActions, ...settingsActions, ...remindersActions };
   writeFileSync(join(server, "server-reference-manifest.json"), JSON.stringify({ node, edge: {} }));
   writeFileSync(join(server, "middleware.js"), "require('./chunks/proxy.js')");
   writeFileSync(
     join(chunks, "proxy.js"),
-    "const matcher='/admin/:path*'; createServerClient(); process.env.NEXT_PUBLIC_SUPABASE_URL;",
+    `${matcherInFunctionsManifest ? "" : "const matcher='/admin/:path*'; "}createServerClient(); ${
+      publicConfigMarker === "publishable"
+        ? "const publishableKey='sb_publishable';"
+        : "process.env.NEXT_PUBLIC_SUPABASE_URL;"
+    }`,
   );
+  if (matcherInFunctionsManifest) {
+    writeFileSync(
+      join(server, "functions-config-manifest.json"),
+      JSON.stringify({
+        version: 1,
+        functions: {
+          "/_middleware": {
+            runtime: "nodejs",
+            matchers: [{ originalSource: "/admin/:path*" }],
+          },
+        },
+      }),
+    );
+  }
   writeFileSync(join(client, "app.js"), staticAsset);
   return root;
 }
@@ -62,18 +92,30 @@ afterEach(() => {
 
 describe("production build boundary verifier", () => {
   it("accepts the exact expected admin and class actions with clean static assets", () => {
-    expect(verify(fixture())).toContain("verified 8 privileged server actions");
+    expect(verify(fixture())).toContain("verified 14 privileged server actions");
+  });
+
+  it("accepts a build where the admin matcher is emitted in functions-config-manifest.json", () => {
+    expect(verify(fixture({ matcherInFunctionsManifest: true }))).toContain(
+      "verified 14 privileged server actions",
+    );
+  });
+
+  it("accepts a build where the proxy bundle retains a publishable-key marker instead of the env variable name", () => {
+    expect(verify(fixture({ publicConfigMarker: "publishable" }))).toContain(
+      "verified 14 privileged server actions",
+    );
   });
 
   it("rejects an unexpected dependency-injected helper exported as a class action", () => {
-    expect(() => verify(fixture({ classActionCount: 5 }))).toThrow(
-      /expected exactly 4 server actions from src\/features\/classes\/admin-actions\.ts/i,
+    expect(() => verify(fixture({ classActionCount: 7 }))).toThrow(
+      /expected exactly 6 server actions from src\/features\/classes\/admin-actions\.ts/i,
     );
   });
 
   it("rejects an unexpected dependency-injected helper exported as a settings action", () => {
-    expect(() => verify(fixture({ settingsActionCount: 3 }))).toThrow(
-      /expected exactly 2 server actions from src\/features\/settings\/admin-actions\.ts/i,
+    expect(() => verify(fixture({ settingsActionCount: 6 }))).toThrow(
+      /expected exactly 5 server actions from src\/features\/settings\/admin-actions\.ts/i,
     );
   });
 

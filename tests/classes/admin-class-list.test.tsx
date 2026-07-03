@@ -16,6 +16,7 @@ const classes = [
     ends_at: "2026-07-02T00:00:00.000Z",
     zoom_url: "https://school.zoom.us/j/123",
     status: "scheduled",
+    series_id: null,
   },
   {
     id: "123e4567-e89b-12d3-a456-426614174001",
@@ -26,6 +27,7 @@ const classes = [
     ends_at: "2026-06-01T18:00:00.000Z",
     zoom_url: "https://school.zoom.us/j/456",
     status: "canceled",
+    series_id: null,
   },
 ];
 
@@ -37,6 +39,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={vi.fn()}
+        duplicateAction={vi.fn()}
         deleteAction={vi.fn()}
       />,
     );
@@ -64,6 +67,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={setStatusAction}
+        duplicateAction={vi.fn()}
         deleteAction={vi.fn()}
       />,
     );
@@ -88,6 +92,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={setStatusAction}
+        duplicateAction={vi.fn()}
         deleteAction={vi.fn()}
       />,
     );
@@ -109,6 +114,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={vi.fn()}
+        duplicateAction={vi.fn()}
         deleteAction={deleteAction}
       />,
     );
@@ -135,6 +141,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={vi.fn()}
+        duplicateAction={vi.fn()}
         deleteAction={vi.fn()}
       />,
     );
@@ -164,6 +171,7 @@ describe("AdminClassList", () => {
         timeZone="America/Los_Angeles"
         now="2026-06-24T12:00:00.000Z"
         setStatusAction={vi.fn()}
+        duplicateAction={vi.fn()}
         deleteAction={deleteAction}
       />,
     );

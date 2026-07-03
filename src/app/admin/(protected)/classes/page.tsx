@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   deleteClass,
+  duplicateClass,
   setClassStatus,
 } from "@/features/classes/admin-actions";
 import { AdminClassList, type AdminClass } from "@/features/classes/admin-class-list";
@@ -11,7 +12,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const CLASS_FIELDS = "id,title,description,teacher_name,starts_at,ends_at,zoom_url,status" as const;
+const CLASS_FIELDS =
+  "id,title,description,teacher_name,starts_at,ends_at,zoom_url,status,series_id" as const;
 
 async function getAdminClasses(): Promise<{ classes: AdminClass[]; timeZone: string }> {
   await requireAdmin();
@@ -46,14 +48,20 @@ export default async function ClassesPage() {
           <h1>Classes</h1>
           <p className="intro">Create, edit, cancel, restore, or remove Zoom classes.</p>
         </div>
-        <Link className="primary-action" href="/admin/classes/new">
-          New class
-        </Link>
+        <div className="admin-page__header-actions">
+          <Link className="secondary-action" href="/admin/classes/import">
+            Import CSV
+          </Link>
+          <Link className="primary-action" href="/admin/classes/new">
+            New class
+          </Link>
+        </div>
       </div>
       <AdminClassList
         classes={classes}
         timeZone={timeZone}
         setStatusAction={setClassStatus}
+        duplicateAction={duplicateClass}
         deleteAction={deleteClass}
       />
     </section>

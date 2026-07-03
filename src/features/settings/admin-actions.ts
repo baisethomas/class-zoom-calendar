@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/features/admin/auth";
+import { generateFeedToken } from "@/features/calendar-feed/token";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type SchoolSettingsField = "displayName" | "timezone" | "parentSessionHours";
@@ -184,5 +185,82 @@ export async function rotateParentAccessCode(
   }
 
   revalidateSettingsViews(false);
+  return { ok: true };
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type ManageAdminState = { ok: true } | { ok: false; error: string };
+
+function adminUserId(formData: FormData): string | null {
+  const value = formData.get("userId");
+  return typeof value === "string" && UUID_PATTERN.test(value.trim())
+    ? value.trim().toLowerCase()
+    : null;
+}
+
+export async function addAdmin(
+  _previousState: ManageAdminState | undefined,
+  formData: FormData,
+): Promise<ManageAdminState> {
+  "use server";
+
+  await requireAdmin();
+  const userId = adminUserId(formData);
+  if (!userId) {
+    return { ok: false, error: "Enter the administrator’s Supabase Auth user id (a UUID)." };
+  }
+
+  const rawLabel = formData.get("label");
+  const label = typeof rawLabel === "string" ? rawLabel.trim() : "";
+  if (trimmedLength(label) > 120) {
+    return { ok: false, error: "Label must contain no more than 120 characters." };
+  }
+
+  const client = createAdminClient();
+  const { error } = await client
+    .from("admins")
+    .upsert({ user_id: userId, label: label || null }, { onConflict: "user_id" });
+  if (error) return { ok: false, error: "Unable to add administrator. Please try again." };
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+export async function removeAdmin(formData: FormData): Promise<ManageAdminState> {
+  "use server";
+
+  const currentUser = await requireAdmin();
+  const userId = adminUserId(formData);
+  if (!userId) return { ok: false, error: "Invalid administrator." };
+  if (userId === currentUser.id) {
+    return { ok: false, error: "You cannot remove your own access." };
+  }
+
+  const client = createAdminClient();
+  const { error } = await client.from("admins").delete().eq("user_id", userId);
+  if (error) return { ok: false, error: "Unable to remove administrator. Please try again." };
+
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}
+
+export type FeedTokenFormState = { ok: true } | { ok: false; error: string };
+
+export async function regenerateCalendarFeedToken(): Promise<FeedTokenFormState> {
+  "use server";
+
+  await requireAdmin();
+  const token = generateFeedToken();
+  const client = createAdminClient();
+  const { error } = await client
+    .from("school_settings")
+    .update({ calendar_feed_token: token })
+    .eq("id", true);
+  if (error) {
+    return { ok: false, error: "Unable to update the calendar feed link. Please try again." };
+  }
+
+  revalidatePath("/admin/settings");
   return { ok: true };
 }

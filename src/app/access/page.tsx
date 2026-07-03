@@ -9,6 +9,7 @@ export default function AccessPage() {
         <h1 id="access-title">Welcome, families.</h1>
         <p className="intro">Enter the access code shared by your school to view upcoming classes.</p>
         <AccessForm action={requestParentAccess} />
+        <p className="field-help">Only families with the shared access code can open the class schedule.</p>
       </section>
     </div>
   );

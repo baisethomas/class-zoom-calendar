@@ -17,6 +17,8 @@ const EMPTY_VALUES: ClassFormValues = {
   startTime: "",
   endTime: "",
   zoomUrl: "",
+  repeat: "none",
+  repeatUntil: "",
 };
 
 function fieldErrorId(name: keyof ClassFormValues) {
@@ -27,10 +29,14 @@ export function ClassForm({
   action,
   initialValues,
   submitLabel = "Create class",
+  showRecurrence = false,
+  showSeriesScope = false,
 }: {
   action: ClassFormAction;
   initialValues?: Partial<ClassFormValues>;
   submitLabel?: string;
+  showRecurrence?: boolean;
+  showSeriesScope?: boolean;
 }) {
   const [values, setValues] = useState<ClassFormValues>({ ...EMPTY_VALUES, ...initialValues });
   const submitAction = useCallback(
@@ -180,6 +186,61 @@ export function ClassForm({
           ) : null}
         </div>
       </div>
+
+      {showRecurrence ? (
+        <div className="class-form__time-grid">
+          <div className="field">
+            <label htmlFor="class-repeat">Repeats</label>
+            <select
+              id="class-repeat"
+              name="repeat"
+              value={values.repeat}
+              onChange={(event) => setValue("repeat")(event.currentTarget.value)}
+              aria-invalid={Boolean(errors.repeat) || undefined}
+              aria-describedby={describedBy("repeat")}
+            >
+              <option value="none">Does not repeat</option>
+              <option value="weekly">Weekly</option>
+            </select>
+            {errors.repeat ? (
+              <p id={fieldErrorId("repeat")} className="field-error">{errors.repeat[0]}</p>
+            ) : null}
+          </div>
+
+          {values.repeat === "weekly" ? (
+            <div className="field">
+              <label htmlFor="class-repeat-until">Repeat until</label>
+              <input
+                id="class-repeat-until"
+                name="repeatUntil"
+                type="date"
+                required
+                value={values.repeatUntil}
+                onChange={(event) => setValue("repeatUntil")(event.currentTarget.value)}
+                aria-invalid={Boolean(errors.repeatUntil) || undefined}
+                aria-describedby={describedBy("repeatUntil")}
+              />
+              {errors.repeatUntil ? (
+                <p id={fieldErrorId("repeatUntil")} className="field-error">{errors.repeatUntil[0]}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showSeriesScope ? (
+        <fieldset className="field series-scope">
+          <legend>Apply changes to</legend>
+          <label className="series-scope__option">
+            <input type="radio" name="applyTo" value="one" defaultChecked />
+            This class only
+          </label>
+          <label className="series-scope__option">
+            <input type="radio" name="applyTo" value="future" />
+            This and future classes in the series
+          </label>
+        </fieldset>
+      ) : null}
 
       <div className="field">
         <label htmlFor="class-zoom-url">Zoom URL</label>

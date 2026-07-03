@@ -9,17 +9,20 @@ select has_extension('pgcrypto', 'pgcrypto is enabled');
 select has_table('public', 'school_settings', 'school_settings exists');
 select has_table('public', 'classes', 'classes exists');
 select has_table('public', 'parent_access_attempts', 'parent_access_attempts exists');
+select has_table('public', 'reminder_subscriptions', 'reminder_subscriptions exists');
+select has_table('public', 'reminder_digests', 'reminder_digests exists');
+select has_table('public', 'admins', 'admins exists');
 
 select columns_are(
   'public',
   'school_settings',
-  array['id', 'display_name', 'timezone', 'access_code_hash', 'parent_session_hours', 'updated_at'],
+  array['id', 'display_name', 'timezone', 'access_code_hash', 'parent_session_hours', 'calendar_feed_token', 'updated_at'],
   'school_settings has exactly the required columns'
 );
 select columns_are(
   'public',
   'classes',
-  array['id', 'title', 'description', 'teacher_name', 'starts_at', 'ends_at', 'zoom_url', 'status', 'created_at', 'updated_at'],
+  array['id', 'title', 'description', 'teacher_name', 'starts_at', 'ends_at', 'zoom_url', 'status', 'series_id', 'created_at', 'updated_at'],
   'classes has exactly the required columns'
 );
 select columns_are(
@@ -36,6 +39,7 @@ with expected(table_name, column_name, data_type, is_nullable, has_default) as (
     ('school_settings', 'timezone', 'text', 'NO', false),
     ('school_settings', 'access_code_hash', 'text', 'YES', false),
     ('school_settings', 'parent_session_hours', 'integer', 'NO', true),
+    ('school_settings', 'calendar_feed_token', 'text', 'YES', false),
     ('school_settings', 'updated_at', 'timestamp with time zone', 'NO', true),
     ('classes', 'id', 'uuid', 'NO', true),
     ('classes', 'title', 'text', 'NO', false),
@@ -45,6 +49,7 @@ with expected(table_name, column_name, data_type, is_nullable, has_default) as (
     ('classes', 'ends_at', 'timestamp with time zone', 'NO', false),
     ('classes', 'zoom_url', 'text', 'NO', false),
     ('classes', 'status', 'text', 'NO', true),
+    ('classes', 'series_id', 'uuid', 'YES', false),
     ('classes', 'created_at', 'timestamp with time zone', 'NO', true),
     ('classes', 'updated_at', 'timestamp with time zone', 'NO', true),
     ('parent_access_attempts', 'client_key_hash', 'text', 'NO', false),
@@ -69,6 +74,7 @@ with expected(table_name, column_name, is_nullable, has_default) as (
     ('school_settings', 'timezone', 'NO', false),
     ('school_settings', 'access_code_hash', 'YES', false),
     ('school_settings', 'parent_session_hours', 'NO', true),
+    ('school_settings', 'calendar_feed_token', 'YES', false),
     ('school_settings', 'updated_at', 'NO', true),
     ('classes', 'id', 'NO', true),
     ('classes', 'title', 'NO', false),
@@ -78,6 +84,7 @@ with expected(table_name, column_name, is_nullable, has_default) as (
     ('classes', 'ends_at', 'NO', false),
     ('classes', 'zoom_url', 'NO', false),
     ('classes', 'status', 'NO', true),
+    ('classes', 'series_id', 'YES', false),
     ('classes', 'created_at', 'NO', true),
     ('classes', 'updated_at', 'NO', true),
     ('parent_access_attempts', 'client_key_hash', 'NO', false),
@@ -175,6 +182,18 @@ select ok(
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.parent_access_attempts'::regclass),
   'parent_access_attempts has RLS enabled'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.reminder_subscriptions'::regclass),
+  'reminder_subscriptions has RLS enabled'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.reminder_digests'::regclass),
+  'reminder_digests has RLS enabled'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.admins'::regclass),
+  'admins has RLS enabled'
 );
 select is(
   (select count(*)::integer from pg_policies where schemaname = 'public' and tablename in ('school_settings', 'classes', 'parent_access_attempts')),

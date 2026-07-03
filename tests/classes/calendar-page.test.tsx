@@ -104,6 +104,54 @@ describe("calendar page", () => {
     expect(screen.getByText("No classes scheduled")).toBeInTheDocument();
   });
 
+  it("shows dashboard summary cards for today's classes, this month, and the next class", async () => {
+    mocks.getParentClasses.mockResolvedValue({
+      classes: [
+        {
+          id: "today-class",
+          title: "Reading Lab",
+          description: "Bring your workbook.",
+          teacher_name: "Ms. Rivera",
+          starts_at: "2026-06-22T16:00:00Z",
+          ends_at: "2026-06-22T17:00:00Z",
+          zoom_url: "https://zoom.us/j/123",
+          status: "scheduled",
+        },
+        {
+          id: "tomorrow-class",
+          title: "Art Studio",
+          description: null,
+          teacher_name: "Mr. Chen",
+          starts_at: "2026-06-23T16:00:00Z",
+          ends_at: "2026-06-23T17:00:00Z",
+          zoom_url: "https://zoom.us/j/456",
+          status: "scheduled",
+        },
+      ],
+      school: { display_name: "North Star School", timezone: "America/Los_Angeles" },
+    });
+    mocks.getNextParentClass.mockResolvedValue({
+      id: "today-class",
+      title: "Reading Lab",
+      description: "Bring your workbook.",
+      teacher_name: "Ms. Rivera",
+      starts_at: "2026-06-22T16:00:00Z",
+      ends_at: "2026-06-22T17:00:00Z",
+      zoom_url: "https://zoom.us/j/123",
+      status: "scheduled",
+    });
+
+    const page = await CalendarPage({ searchParams: Promise.resolve({}) });
+    render(page);
+
+    expect(screen.getByText("Today’s classes")).toBeInTheDocument();
+    expect(screen.getByText("1 session scheduled")).toBeInTheDocument();
+    expect(screen.getByText("This month")).toBeInTheDocument();
+    expect(screen.getByText("2 classes on the calendar")).toBeInTheDocument();
+    expect(screen.getByText("Coming up")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Reading Lab", level: 2 })).toBeInTheDocument();
+  });
+
   it("does not mark a future viewed class when the global next class is earlier", async () => {
     mocks.getParentClasses.mockResolvedValue({
       classes: [{

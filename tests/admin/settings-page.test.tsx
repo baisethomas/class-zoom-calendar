@@ -8,10 +8,23 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/features/admin/auth", () => ({
   requireAdmin: mocks.requireAdmin,
+  bootstrapAdminId: () => "54a66d5f-d5dd-4d2d-8e06-a3703a86f77d",
+}));
+
+vi.mock("@/features/settings/admins-list", () => ({
+  AdminsList: ({ admins }: { admins: Array<{ user_id: string }> }) => (
+    <div aria-label="Administrators">{admins.length} additional administrators</div>
+  ),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: mocks.createAdminClient,
+}));
+
+vi.mock("next/headers", () => ({
+  headers: vi.fn(
+    async () => new Headers({ host: "school.example.org", "x-forwarded-proto": "https" }),
+  ),
 }));
 
 vi.mock("@/features/settings/settings-forms", () => ({
@@ -29,6 +42,9 @@ vi.mock("@/features/settings/settings-forms", () => ({
     <form aria-label="Parent access code">
       {hasAccessCode ? "An access code is currently configured." : "No access code is configured."}
     </form>
+  ),
+  CalendarFeedForm: ({ feedUrl }: { feedUrl: string | null }) => (
+    <div aria-label="Calendar feed">{feedUrl ?? "No calendar feed link exists yet."}</div>
   ),
 }));
 
@@ -53,10 +69,20 @@ function settingsPageClient() {
           timezone: "America/Los_Angeles",
           access_code_hash: "$2b$hash",
           parent_session_hours: 48,
+          calendar_feed_token: "feed-token-value-1234567890abcdefghijklm",
           updated_at: "2026-06-24T15:30:00.000Z",
         },
         error: null,
       });
+    },
+  };
+  const adminsQuery = {
+    select(fields: string) {
+      calls.push(["admins.select", fields]);
+      return this;
+    },
+    order() {
+      return Promise.resolve({ data: [], error: null });
     },
   };
   return {
@@ -64,7 +90,7 @@ function settingsPageClient() {
     client: {
       from(table: string) {
         calls.push(["from", table]);
-        return settingsQuery;
+        return table === "admins" ? adminsQuery : settingsQuery;
       },
     },
   };
@@ -91,10 +117,12 @@ describe("administrator settings page", () => {
 
     render(await SettingsPage());
 
-    expect(order).toEqual(["admin", "service"]);
+    // Both the settings load and the admin-access load authorize before
+    // creating a service client.
+    expect(order).toEqual(["admin", "service", "admin", "service"]);
     expect(admin.calls).toContainEqual([
       "settings.select",
-      "display_name,timezone,access_code_hash,parent_session_hours,updated_at",
+      "display_name,timezone,access_code_hash,parent_session_hours,calendar_feed_token,updated_at",
     ]);
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByLabelText("School display name")).toHaveValue("Evergreen Learning");
@@ -103,5 +131,10 @@ describe("administrator settings page", () => {
     expect(screen.getByText("An access code is currently configured.")).toBeInTheDocument();
     expect(screen.getByText(/updated/i)).toHaveTextContent("Updated");
     expect(screen.queryByText("$2b$hash")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "https://school.example.org/api/calendar-feed?token=feed-token-value-1234567890abcdefghijklm",
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -9,12 +9,31 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admins: {
+        Row: {
+          created_at: string
+          label: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          label?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          label?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           created_at: string
           description: string | null
           ends_at: string
           id: string
+          series_id: string | null
           starts_at: string
           status: string
           teacher_name: string
@@ -27,6 +46,7 @@ export type Database = {
           description?: string | null
           ends_at: string
           id?: string
+          series_id?: string | null
           starts_at: string
           status?: string
           teacher_name: string
@@ -39,6 +59,7 @@ export type Database = {
           description?: string | null
           ends_at?: string
           id?: string
+          series_id?: string | null
           starts_at?: string
           status?: string
           teacher_name?: string
@@ -66,9 +87,46 @@ export type Database = {
         }
         Relationships: []
       }
+      reminder_digests: {
+        Row: {
+          digest_date: string
+          sent_at: string
+        }
+        Insert: {
+          digest_date: string
+          sent_at?: string
+        }
+        Update: {
+          digest_date?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      reminder_subscriptions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          unsubscribe_token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          unsubscribe_token: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          unsubscribe_token?: string
+        }
+        Relationships: []
+      }
       school_settings: {
         Row: {
           access_code_hash: string | null
+          calendar_feed_token: string | null
           display_name: string
           id: boolean
           parent_session_hours: number
@@ -77,6 +135,7 @@ export type Database = {
         }
         Insert: {
           access_code_hash?: string | null
+          calendar_feed_token?: string | null
           display_name: string
           id?: boolean
           parent_session_hours?: number
@@ -85,6 +144,7 @@ export type Database = {
         }
         Update: {
           access_code_hash?: string | null
+          calendar_feed_token?: string | null
           display_name?: string
           id?: boolean
           parent_session_hours?: number

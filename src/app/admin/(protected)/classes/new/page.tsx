@@ -15,7 +15,7 @@ export default async function NewClassPage() {
       <p className="eyebrow">Administrator</p>
       <h1>New class</h1>
       <p className="intro">Times are entered in the school’s configured local time zone.</p>
-      <ClassForm action={createClass} submitLabel="Create class" />
+      <ClassForm action={createClass} submitLabel="Create class" showRecurrence />
       <p className="back-link">
         <Link href="/admin/classes">Back to classes</Link>
       </p>

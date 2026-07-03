@@ -7,8 +7,9 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
 const expectedPrivilegedActionFiles = new Map([
   ["src/features/admin/auth.ts", 2],
-  ["src/features/classes/admin-actions.ts", 4],
-  ["src/features/settings/admin-actions.ts", 2],
+  ["src/features/classes/admin-actions.ts", 6],
+  ["src/features/settings/admin-actions.ts", 5],
+  ["src/features/reminders/actions.ts", 1],
 ]);
 const privilegedActions = new Map(
   Array.from(expectedPrivilegedActionFiles.keys(), (filename) => [filename, new Map()]),
@@ -45,14 +46,28 @@ if (!existsSync(middlewareEntry)) {
   throw new Error("Expected the admin auth refresh proxy middleware entry to be emitted");
 }
 
+const functionsConfigPath = resolve(serverDirectory, "functions-config-manifest.json");
+const functionsConfig = existsSync(functionsConfigPath)
+  ? JSON.parse(readFileSync(functionsConfigPath, "utf8"))
+  : null;
+const hasAdminMatcherInManifest = Object.values(functionsConfig?.functions ?? {}).some((entry) =>
+  Array.isArray(entry?.matchers) && entry.matchers.some((matcher) =>
+    matcher?.originalSource === "/admin/:path*" ||
+    (typeof matcher?.regexp === "string" && matcher.regexp.includes("\\/admin")),
+  ),
+);
+
 const serverJavaScript = filesWithin(serverDirectory)
   .filter((file) => file.endsWith(".js"))
   .map((file) => readFileSync(file, "utf8"))
   .join("\n");
+const hasPublicSupabaseMarker =
+  serverJavaScript.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+  serverJavaScript.includes("publishableKey");
 if (
-  !serverJavaScript.includes("/admin/:path*") ||
+  !(serverJavaScript.includes("/admin/:path*") || hasAdminMatcherInManifest) ||
   !serverJavaScript.includes("createServerClient") ||
-  !serverJavaScript.includes("NEXT_PUBLIC_SUPABASE_URL")
+  !hasPublicSupabaseMarker
 ) {
   throw new Error("Expected the admin auth refresh proxy to be registered for /admin routes");
 }
@@ -62,6 +77,7 @@ const forbiddenValues = [
   "src/features/admin/auth.ts",
   "src/features/classes/admin-actions.ts",
   "src/features/settings/admin-actions.ts",
+  "src/features/reminders/actions.ts",
   "src/lib/supabase/admin.ts",
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 ].filter((value) => typeof value === "string" && (value.startsWith("SUPABASE_") || value.startsWith("src/") || value.length >= 16));
