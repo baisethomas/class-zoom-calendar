@@ -75,6 +75,26 @@ export async function getParentClasses({
   return { classes, school };
 }
 
+/**
+ * Public, unauthenticated read of just the school display name for the landing
+ * page. Runs server-side only; returns null on any failure so the landing
+ * degrades to a generic title rather than erroring.
+ */
+export async function getSchoolDisplayName(): Promise<string | null> {
+  try {
+    const client = createAdminClient();
+    const { data, error } = await client
+      .from("school_settings")
+      .select("display_name")
+      .eq("id", true)
+      .single();
+    if (error || !data?.display_name) return null;
+    return data.display_name;
+  } catch {
+    return null;
+  }
+}
+
 export async function getNextParentClass({
   from,
   sessionToken,
